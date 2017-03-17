@@ -1,0 +1,10 @@
+[Unit]
+Description=vclient-to-mqtt
+After=vcontrold.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/vclient-to-mqtt
+
+[Install]
+WantedBy=multi-user.target

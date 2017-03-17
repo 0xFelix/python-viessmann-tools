@@ -1,0 +1,10 @@
+[Unit]
+Description=vito-reset
+After=vcontrold.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/vito-reset
+
+[Install]
+WantedBy=multi-user.target

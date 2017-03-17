@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+
+import signal
+
+from viessmanntools import VitoReset
+
+def exit_handler(sig, frame):
+    vito_reset.stop()
+
+if __name__ == "__main__":
+    signal.signal(signal.SIGINT, exit_handler)
+    signal.signal(signal.SIGTERM, exit_handler)
+
+    with VitoReset() as vito_reset:
+        vito_reset.run()
