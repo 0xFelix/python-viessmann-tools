@@ -1,7 +1,7 @@
 # Maintainer: 0xFelix
 
 pkgname=python-viessmann-tools
-pkgver=0.1
+pkgver=0.2
 pkgrel=1
 pkgdesc='Monitor and reset Viessmann heaters'
 arch=(any)
@@ -13,8 +13,8 @@ source=('setup.py'
         'vclient-to-mqtt.service'
 	'vito-reset'
 	'vito-reset.service')
-sha256sums=('33e11ae2a31eb9c237ed1745ac4bf5e70751495a1f1f87e389fdc5721418d166'
-            '500ace3e2f1aa0135404629331a598dcd749ab6b0a86839cd6ce9622456583bd'
+sha256sums=('0a6d8836c18d979b9e7daf7b76441fee1b7d9db2bb4beb1ba66cbd756462e404'
+            '56357a1765647ff7e68530490515ab69495df6d2d8a88d6021afae3a9e9737d0'
 	    '14a81f8d8820754e024487fed9a50d5b639e7f10897301f28f3118ffd0d68277'
 	    '0a1f6e8964de8b71bfe46b1e58ba4fc99da008d1f20977002667ac288950b28f'
 	    '57f782e742654c6a22feaf158219948b2bb9b4a759abde1b83016ab772def22a'
