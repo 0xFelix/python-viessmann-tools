@@ -131,10 +131,10 @@ class VitoReset():
         NOT_ALLOWED_ERRORCODE = "NOT_ALLOWED_ERRORCODE"
 
     class VclientResult:
-        def __init__(self, result, query_date_locale="de_DE", value_separator=";", query_date_format="%a,%d.%m.%Y %H:%M:%S"):
+        def __init__(self, result, query_date_locale="de_DE", query_date_format="%a,%d.%m.%Y %H:%M:%S"):
             self.query_date_format = query_date_format
             locale.setlocale(locale.LC_TIME, query_date_locale)
-            result_stripped = result.rstrip().split(value_separator)
+            result_stripped = result.rstrip()
             second_space_index = self.__find_nth(result_stripped, " ", 2)
             self.error_datetime = self.__get_error_datetime(result_stripped[:second_space_index])
             self.errormsg = self.__get_errormsg(result_stripped[second_space_index + 1:])
@@ -182,7 +182,7 @@ class VitoReset():
         def __get_error_datetime(self, string):
             return self.__parse_date(string)
 
-    def __init__(self, gpio_pin=8, allowed_errorcodes=None, mqtt_broker="192.168.222.36", query_period=300, reset_wait_time=1, reset_max=3, value_separator=";", mqtt_topic_reset="tele/heater/RESET", mqtt_topic_vito_reset_state="tele/heater/VITO-RESET-STATE"):
+    def __init__(self, gpio_pin=8, allowed_errorcodes=None, mqtt_broker="192.168.222.36", query_period=300, reset_wait_time=1, reset_max=3, mqtt_topic_reset="tele/heater/RESET", mqtt_topic_vito_reset_state="tele/heater/VITO-RESET-STATE"):
         if allowed_errorcodes is None:
             self.__allowed_errorcodes = ["F9"]
         else:
@@ -191,7 +191,6 @@ class VitoReset():
         self.__gpio_pin = gpio_pin
         self.__query_period = query_period
         self.__reset_wait_time = reset_wait_time
-        self.__value_separator = value_separator
         self.__reset_max = reset_max
         self.__mqtt_topic_reset = mqtt_topic_reset
         self.__mqtt_topic_vito_reset_state = mqtt_topic_vito_reset_state
@@ -236,7 +235,7 @@ class VitoReset():
         last_error = VitoReset.VclientResult("Do,01.01.1970 00:00:00 Geblaesedrehzahl bei Brennerstart zu niedrig (F9)")
         reset_counter = 0
 
-        with Vclient(query_data=["getError0"], value_separator=self.__value_separator) as vclient:
+        with Vclient(query_data=["getError0"]) as vclient:
             while self.__run:
                 try:
                     vclient_result = VitoReset.VclientResult(vclient.run())
