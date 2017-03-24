@@ -134,12 +134,17 @@ class VitoReset():
         def __init__(self, result, query_date_locale="de_DE", value_separator=";", query_date_format="%a,%d.%m.%Y %H:%M:%S"):
             self.query_date_format = query_date_format
             locale.setlocale(locale.LC_TIME, query_date_locale)
-            vclient_result_list = result.rstrip().split(value_separator)
-            self.heater_datetime = self.__get_heater_datetime(vclient_result_list[0])
-            second_space_index = self.__find_nth(vclient_result_list[1], " ", 2)
-            self.error_datetime = self.__get_error_datetime(vclient_result_list[1][:second_space_index])
-            self.errormsg = self.__get_errormsg(vclient_result_list[1][second_space_index + 1:])
-            self.errorcode = self.__get_errorcode(vclient_result_list[1][second_space_index + 1:])
+            result_stripped = result.rstrip().split(value_separator)
+            second_space_index = self.__find_nth(result_stripped, " ", 2)
+            self.error_datetime = self.__get_error_datetime(result_stripped[:second_space_index])
+            self.errormsg = self.__get_errormsg(result_stripped[second_space_index + 1:])
+            self.errorcode = self.__get_errorcode(result_stripped[second_space_index + 1:])
+
+        def __str__(self):
+            return str(self.__dict__)
+
+        def __eq__(self, other):
+            return self.__dict__ == other.__dict__
 
         @staticmethod
         def __find_nth(haystack, needle, n):
@@ -173,9 +178,6 @@ class VitoReset():
                 return datetime.datetime.strptime(date_string, self.query_date_format)
             except ValueError:
                 raise RuntimeError("Could not parse datetime")
-
-        def __get_heater_datetime(self, string):
-            return self.__parse_date(string)
 
         def __get_error_datetime(self, string):
             return self.__parse_date(string)
@@ -231,16 +233,18 @@ class VitoReset():
 
     def run(self):
         self.__run = True
+        last_error = VitoReset.VclientResult("Do,01.01.1970 00:00:00 Geblaesedrehzahl bei Brennerstart zu niedrig (F9)")
         reset_counter = 0
 
-        with Vclient(query_data=["getSystemZeit", "getError0"], value_separator=self.__value_separator) as vclient:
+        with Vclient(query_data=["getError0"], value_separator=self.__value_separator) as vclient:
             while self.__run:
                 try:
                     vclient_result = VitoReset.VclientResult(vclient.run())
-                    if vclient_result.heater_datetime - datetime.timedelta(seconds=self.__query_period) <= vclient_result.error_datetime:
+                    if vclient_result != last_error:
                         if vclient_result.errorcode in self.__allowed_errorcodes:
                             if reset_counter < self.__reset_max:
                                 self.__reset_vito(vclient_result)
+                                last_error = vclient_result
                                 reset_counter += 1
                                 self.__publish_vito_reset_state(VitoReset.State.OK)
                             else:
