@@ -1,6 +1,6 @@
 from distutils.core import setup
 setup(name='viessmanntools',
-      version='0.2',
+      version='0.3',
       description='Monitor and reset Viessmann heaters',
       author='0xFelix',
       py_modules=['viessmanntools'],
