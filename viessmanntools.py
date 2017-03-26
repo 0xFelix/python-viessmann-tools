@@ -256,7 +256,7 @@ class VitoReset():
 
     def run(self):
         self.__run = True
-        last_error = VitoReset.VclientResult("Do,01.01.1970 00:00:00 Geblaesedrehzahl bei Brennerstart zu niedrig (F9)")
+        last_error = VitoReset.VclientResult("Do,01.01.1970 00:00:00 Geblaesedrehzahl bei Brennerstart zu niedrig (F9)", self.__query_date_locale, self.__query_date_format)
         reset_counter = 0
 
         with Vclient(query_data=["getError0"], value_separator=";") as vclient:
