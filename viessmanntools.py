@@ -1,3 +1,5 @@
+"""Python module to monitor and reset Viessmann heaters"""
+
 from json import dumps
 from os import remove
 from time import sleep
@@ -11,8 +13,10 @@ import paho.mqtt.client as mqtt
 import RPi.GPIO as GPIO
 
 class ViessmannToolsConfig:
+    """Used to generate a configparser object for use with viessmanntools classes"""
     @staticmethod
     def get_default_config():
+        """Assemble the default config"""
         config = configparser.ConfigParser(interpolation=None)
 
         config["Vclient"] = {}
@@ -44,15 +48,26 @@ class ViessmannToolsConfig:
 
     @staticmethod
     def get_config(config_file_path):
+        """Assemble the default config and read config in config_file_path"""
         config = ViessmannToolsConfig.get_default_config()
         config.read(config_file_path)
         return config
 
 class Vclient:
+    """Vclient is a wrapper for the vclient CLI tool
+
+    The data to query (vclient -c argument) and the separator for the returned values need to be passed when initializing.
+
+    Pass a configparser object to configure the following parameters:
+    vclient_path (Path to the vclient executable)
+    vcontrold_host (Host:Port combination of the host running vcontrold)
+    query_timeout (Time to wait for vclient to return a result)
+    """
+
     def __init__(self, query_data, value_separator, config=None):
         if config is None:
             config = ViessmannToolsConfig.get_default_config()
-        
+
         config = config["Vclient"]
         self.__query_timeout = config.getint("query_timeout")
         self.__encoding = locale.getpreferredencoding(False)
@@ -81,6 +96,7 @@ class Vclient:
         remove(self.__template_filename)
 
     def run(self):
+        """Exec vclient and return its output"""
         result = subprocess.run(self.args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=self.__query_timeout, check=True, encoding=self.__encoding)
 
         result_lower = result.stdout.lower()
@@ -92,6 +108,17 @@ class Vclient:
         return result.stdout
 
 class VclientToMqtt:
+    """VclientToMqtt executes vclient periodically and publishes its results over VclientToMqtt
+
+    Pass a configparser object to configure the following parameters:
+    query_data (Data to query (vclient -c argument))
+    query_period (After which time in seconds should the query run again)
+    value_separator (Which value is used as separator for the values returned by vclient)
+    unwanted_vclient_output (Which output should be filtered out of the vclient result)
+    mqtt_broker (Address of the MQTT broker)
+    mqtt_topic (MQTT topic to publish values in)
+    """
+
     def __init__(self, config=None):
         if config is None:
             config = ViessmannToolsConfig.get_default_config()
@@ -121,6 +148,7 @@ class VclientToMqtt:
         return output.rstrip()
 
     def run(self):
+        """Start a loop, exec vclient periodically and return its output"""
         self.__run = True
 
         with Vclient(query_data=self.__query_data, value_separator=self.__value_separator) as vclient:
@@ -144,15 +172,39 @@ class VclientToMqtt:
                     sleep(1)
 
     def stop(self):
+        """Stop the loop started by run"""
         self.__run = False
 
 class VitoReset():
+    """VitoReset can reset Viessmann heaters when predefined errors occur
+
+    It executes vclient periodically and queries for the latest error.
+    If the error changed compared to the last query a GPIO pin is set to HIGH for a defined amount of time.
+    A relais can be attached to the GPIO pin and needs to be connected to the contacts of the RESET button on the heater mainboard.
+    This allows an automated reset of the heater
+
+    To report its own state and the state of the heater VitoReset uses MQTT.
+
+    Pass a configparser object to configure the following parameters:
+    gpio_pin (GPIO pin which gets toggled when an error occured)
+    query_period (After which time in seconds should the query run again)
+    query_date_locale (Locale of the date string returned by the heater)
+    query_date_format (Format of the date string returned by the heater)
+    allowed_errorcodes (On which error codes a reset is allowed)
+    reset_wait_time (Time which the GPIO pin is kept high when resetting)
+    reset_max (How many consecutive errors are allowed)
+    mqtt_broker (Address of the MQTT broker)
+    mqtt_topic_reset (MQTT topic to publish heater states in)
+    mqtt_topic_vito_reset_state (MQTT topic to publish VitoReset states in)
+    """
+
     class State():
         OK = "OK"
         RESET_MAX_REACHED = "RESET_MAX_REACHED"
         NOT_ALLOWED_ERRORCODE = "NOT_ALLOWED_ERRORCODE"
 
     class VclientResult:
+        """Parse the error string returned by the heater and make it an object"""
         def __init__(self, result, query_date_locale, query_date_format):
             locale.setlocale(locale.LC_TIME, query_date_locale)
             self.__query_date_format = query_date_format
@@ -255,6 +307,7 @@ class VitoReset():
         self.__set_gpio_output(False)
 
     def run(self):
+        """Start a loop, exec vclient periodically and reset the heater if needed"""
         self.__run = True
         last_error = VitoReset.VclientResult("Do,01.01.1970 00:00:00 Geblaesedrehzahl bei Brennerstart zu niedrig (F9)", self.__query_date_locale, self.__query_date_format)
         reset_counter = 0
@@ -289,4 +342,5 @@ class VitoReset():
                     sleep(1)
 
     def stop(self):
+        """Stop the loop started by run"""
         self.__run = False
