@@ -1,6 +1,7 @@
 from json import dumps
 from os import remove
 from time import sleep
+import configparser
 import datetime
 import locale
 import subprocess
@@ -9,79 +10,101 @@ import re
 import paho.mqtt.client as mqtt
 import RPi.GPIO as GPIO
 
+class ViessmannToolsConfig:
+    @staticmethod
+    def get_default_config():
+        config = configparser.ConfigParser(interpolation=None)
+
+        config["Vclient"] = {}
+        config["Vclient"]["path"] = "/usr/bin/vclient"
+        config["Vclient"]["vcontrold_host"] = "localhost:3002"
+        config["Vclient"]["query_timeout"] = "30"
+
+        config["VclientToMqtt"] = {}
+        config["VclientToMqtt"]["query_data"] = "getTempAussen,getTempWarmwasser,getTempKessel,getBrennerLeistungFein,getBrennerStatus,getTempAbgas,getUmschaltventilStatus,getTempVorlauf"
+        config["VclientToMqtt"]["query_period"] = "60"
+        config["VclientToMqtt"]["value_separator"] = ";"
+        config["VclientToMqtt"]["unwanted_vclient_output"] = '" Grad Celsius", " l/h", " %", " Stunden", " h"'
+        config["VclientToMqtt"]["mqtt_broker"] = "192.168.222.36"
+        config["VclientToMqtt"]["mqtt_topic"] = "tele/heater/STATE"
+
+        config["VitoReset"] = {}
+        config["VitoReset"]["gpio_pin"] = "8"
+        config["VitoReset"]["query_period"] = "300"
+        config["VitoReset"]["query_date_locale"] = "de_DE"
+        config["VitoReset"]["query_date_format"] = "%a,%d.%m.%Y %H:%M:%S"
+        config["VitoReset"]["allowed_errorcodes"] = "F9"
+        config["VitoReset"]["reset_wait_time"] = "1"
+        config["VitoReset"]["reset_max"] = "3"
+        config["VitoReset"]["mqtt_broker"] = "192.168.222.36"
+        config["VitoReset"]["mqtt_topic_reset"] = "tele/heater/RESET"
+        config["VitoReset"]["mqtt_topic_vito_reset_state"] = "tele/heater/VITO-RESET-STATE"
+
+        return config
+
+    @staticmethod
+    def get_config(config_file_path):
+        config = ViessmanntoolsConfig.get_default_config()
+        config.read(config_file_path)
+        return config
+
 class Vclient:
-    def __init__(self, query_data=None, value_separator=";", path="/usr/bin/vclient", vcontrold_host="localhost:3002", query_timeout=30):
-        if query_data is None:
-            query_data = ["getSystemZeit"]
+    def __init__(self, query_data, value_separator, config=None):
+        if config is None:
+            config = ViessmannToolsConfig.get_default_config()
+        
+        config = config["Vclient"]
+        self.__query_timeout = config.getint("query_timeout")
+        self.__encoding = locale.getpreferredencoding(False)
 
-        self.query_timeout = query_timeout
-
-        self.commands = ""
+        commands = ""
         command_separator = ","
         template = ""
         for i, item in enumerate(query_data):
             if i == len(query_data) - 1:
-                self.commands += item
+                commands += item
                 template += "$R" + str(i + 1)
             else:
-                self.commands += item + command_separator
+                commands += item + command_separator
                 template += "$R" + str(i + 1) + value_separator
 
-        self.template_filename = "/tmp/vclientTemplate_" + datetime.datetime.now().isoformat()
-        with open(self.template_filename, "w") as template_file:
+        self.__template_filename = "/tmp/vclientTemplate_" + datetime.datetime.now().isoformat()
+        with open(self.__template_filename, "w") as template_file:
             print(template, file=template_file)
 
-        self.args = [path, "-h", vcontrold_host, "-t", self.template_filename, "-c", self.commands]
+        self.args = [config.get("path"), "-h", config.get("vcontrold_host"), "-t", self.__template_filename, "-c", commands]
 
     def __enter__(self):
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        remove(self.template_filename)
+        remove(self.__template_filename)
 
     def run(self):
-        result = subprocess.run(self.args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=self.query_timeout, check=True, encoding=locale.getpreferredencoding(False))
+        result = subprocess.run(self.args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=self.__query_timeout, check=True, encoding=self.__encoding)
 
-        if "framer: error 15" in result.stdout.lower():
+        result_lower = result.stdout.lower()
+        if "framer: error 15" in result_lower:
             raise ValueError("Communication with heater was garbled, try again")
-        elif "srv err" in result.stdout.lower() or "error" in result.stdout.lower():
+        elif "srv err" in result_lower or "error" in result_lower:
             raise RuntimeError("vclient execution failed, output was:\n" + result.stdout)
 
         return result.stdout
 
 class VclientToMqtt:
-    def __init__(self, query_data=None, mqtt_broker="192.168.222.36", query_period=60, value_separator=";", mqtt_topic="tele/heater/STATE", unwanted_vclient_output=None):
-        if query_data is None:
-            self.__query_data = [
-                "getTempAussen",
-                "getTempWarmwasser",
-                "getTempKessel",
-                "getBrennerLeistungFein",
-                "getBrennerStatus",
-                "getTempAbgas",
-                "getUmschaltventilStatus",
-                "getTempVorlauf"
-            ]
-        else:
-            self.__query_data = query_data
+    def __init__(self, config=None):
+        if config is None:
+            config = ViessmannToolsConfig.get_default_config()
 
-        if unwanted_vclient_output is None:
-            self.__unwanted_vclient_output = [
-                " Grad Celsius",
-                " l/h",
-                " %",
-                " Stunden",
-                " h"
-            ]
-        else:
-            self.__unwanted_vclient_output = unwanted_vclient_output
-
-        self.__query_period = query_period
-        self.__value_separator = value_separator
-        self.__mqtt_topic = mqtt_topic
+        config = config["VclientToMqtt"]
+        self.__query_data = config.get("query_data").split(",")
+        self.__query_period = config.getint("query_period")
+        self.__value_separator = config.get("value_separator")
+        self.__unwanted_vclient_output = config.get("unwanted_vclient_output")[1:-1].split('", "')
+        self.__mqtt_topic = config.get("mqtt_topic")
 
         self.__mqttc = mqtt.Client()
-        self.__mqttc.connect(mqtt_broker)
+        self.__mqttc.connect(config.get("mqtt_broker"))
         self.__mqttc.loop_start()
 
         self.__run = False
@@ -93,10 +116,9 @@ class VclientToMqtt:
         self.__mqttc.disconnect()
 
     def __sanitize_output(self, output):
-        sanitized_output = output
         for item in self.__unwanted_vclient_output:
-            sanitized_output = sanitized_output.replace(item, "")
-        return sanitized_output.rstrip()
+            output = output.replace(item, "")
+        return output.rstrip()
 
     def run(self):
         self.__run = True
@@ -131,9 +153,9 @@ class VitoReset():
         NOT_ALLOWED_ERRORCODE = "NOT_ALLOWED_ERRORCODE"
 
     class VclientResult:
-        def __init__(self, result, query_date_locale="de_DE", query_date_format="%a,%d.%m.%Y %H:%M:%S"):
-            self.query_date_format = query_date_format
+        def __init__(self, result, query_date_locale, query_date_format):
             locale.setlocale(locale.LC_TIME, query_date_locale)
+            self.__query_date_format = query_date_format
             result_stripped = result.rstrip()
             second_space_index = self.__find_nth(result_stripped, " ", 2)
             self.error_datetime = self.__get_error_datetime(result_stripped[:second_space_index])
@@ -175,29 +197,31 @@ class VitoReset():
 
         def __parse_date(self, date_string):
             try:
-                return datetime.datetime.strptime(date_string, self.query_date_format)
+                return datetime.datetime.strptime(date_string, self.__query_date_format)
             except ValueError:
                 raise RuntimeError("Could not parse datetime")
 
         def __get_error_datetime(self, string):
             return self.__parse_date(string)
 
-    def __init__(self, gpio_pin=8, allowed_errorcodes=None, mqtt_broker="192.168.222.36", query_period=300, reset_wait_time=1, reset_max=3, mqtt_topic_reset="tele/heater/RESET", mqtt_topic_vito_reset_state="tele/heater/VITO-RESET-STATE"):
-        if allowed_errorcodes is None:
-            self.__allowed_errorcodes = ["F9"]
-        else:
-            self.__allowed_errorcodes = allowed_errorcodes
+    def __init__(self, config=None):
+        if config is None:
+            config = ViessmannToolsConfig.get_default_config()
 
-        self.__gpio_pin = gpio_pin
-        self.__query_period = query_period
-        self.__reset_wait_time = reset_wait_time
-        self.__reset_max = reset_max
-        self.__mqtt_topic_reset = mqtt_topic_reset
-        self.__mqtt_topic_vito_reset_state = mqtt_topic_vito_reset_state
+        config = config["VitoReset"]
+        self.__gpio_pin = config.getint("gpio_pin")
+        self.__query_period = config.getint("query_period")
+        self.__query_date_locale = config.get("query_date_locale")
+        self.__query_date_format = config.get("query_date_format")
+        self.__allowed_errorcodes = config.get("allowed_errorcodes").split(",")
+        self.__reset_wait_time = config.getint("reset_wait_time")
+        self.__reset_max = config.getint("reset_max")
+        self.__mqtt_topic_reset = config.get("mqtt_topic_reset")
+        self.__mqtt_topic_vito_reset_state = config.get("mqtt_topic_vito_reset_state")
 
         self.__setup_gpio()
         self.__mqttc = mqtt.Client()
-        self.__mqttc.connect(mqtt_broker)
+        self.__mqttc.connect(config.get("mqtt_broker"))
         self.__mqttc.loop_start()
 
         self.__run = False
@@ -235,10 +259,10 @@ class VitoReset():
         last_error = VitoReset.VclientResult("Do,01.01.1970 00:00:00 Geblaesedrehzahl bei Brennerstart zu niedrig (F9)")
         reset_counter = 0
 
-        with Vclient(query_data=["getError0"]) as vclient:
+        with Vclient(query_data=["getError0"], value_separator=";") as vclient:
             while self.__run:
                 try:
-                    vclient_result = VitoReset.VclientResult(vclient.run())
+                    vclient_result = VitoReset.VclientResult(vclient.run(), self.__query_date_locale, self.__query_date_format)
                     if vclient_result != last_error:
                         if vclient_result.errorcode in self.__allowed_errorcodes:
                             if reset_counter < self.__reset_max:
