@@ -44,7 +44,7 @@ class ViessmannToolsConfig:
 
     @staticmethod
     def get_config(config_file_path):
-        config = ViessmanntoolsConfig.get_default_config()
+        config = ViessmannToolsConfig.get_default_config()
         config.read(config_file_path)
         return config
 
