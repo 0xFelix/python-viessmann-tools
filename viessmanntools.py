@@ -7,7 +7,6 @@ import configparser
 import datetime
 import locale
 import subprocess
-import re
 
 import paho.mqtt.client as mqtt
 import RPi.GPIO as GPIO
@@ -37,7 +36,7 @@ class ViessmannToolsConfig:
         config["VitoReset"]["query_period"] = "300"
         config["VitoReset"]["query_date_locale"] = "de_DE"
         config["VitoReset"]["query_date_format"] = "%a,%d.%m.%Y %H:%M:%S"
-        config["VitoReset"]["allowed_errorcodes"] = "F9"
+        config["VitoReset"]["allowed_errorcodes"] = "00,F9"
         config["VitoReset"]["reset_wait_time"] = "1"
         config["VitoReset"]["reset_max"] = "3"
         config["VitoReset"]["mqtt_broker"] = "192.168.222.36"
@@ -211,8 +210,8 @@ class VitoReset():
             result_stripped = result.rstrip()
             second_space_index = self.__find_nth(result_stripped, " ", 2)
             self.error_datetime = self.__get_error_datetime(result_stripped[:second_space_index])
-            self.errormsg = self.__get_errormsg(result_stripped[second_space_index + 1:])
-            self.errorcode = self.__get_errorcode(result_stripped[second_space_index + 1:])
+            self.errormsg = result_stripped[second_space_index + 1:-5]
+            self.errorcode = result_stripped[-3:-1]
 
         def __str__(self):
             return str(self.__dict__)
@@ -230,22 +229,6 @@ class VitoReset():
                 return start
             else:
                 raise RuntimeError("Could not find nth character")
-
-        @staticmethod
-        def __get_errormsg(string):
-            match = re.match(r".+?(?= \()", string)
-            if match:
-                return match.group(0)
-            else:
-                raise RuntimeError("Could not parse errormsg")
-
-        @staticmethod
-        def __get_errorcode(string):
-            match = re.search(r"\(([^)]+)\)", string)
-            if match:
-                return match.group(1)
-            else:
-                raise RuntimeError("Could not parse errorcode")
 
         def __parse_date(self, date_string):
             try:
@@ -309,7 +292,7 @@ class VitoReset():
     def run(self):
         """Start a loop, exec vclient periodically and reset the heater if needed"""
         self.__run = True
-        last_error = VitoReset.VclientResult("Do,01.01.1970 00:00:00 Geblaesedrehzahl bei Brennerstart zu niedrig (F9)", self.__query_date_locale, self.__query_date_format)
+        last_error = VitoReset.VclientResult("Do,01.01.1970 00:00:00 Regelbetrieb (kein Fehler) (00)", self.__query_date_locale, self.__query_date_format)
         reset_counter = 0
 
         with Vclient(query_data=["getError0"], value_separator=";") as vclient:
