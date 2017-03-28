@@ -162,9 +162,9 @@ class VclientToMqtt:
 
                     self.__mqttc.publish(self.__mqtt_topic, dumps(data), retain=True)
                 except ValueError as value_error:
-                    print(str(value_error))
+                    print(str(value_error), flush=True)
                 except subprocess.TimeoutExpired:
-                    print("vclient query took too long, will try again next period")
+                    print("vclient query took too long, will try again next period", flush=True)
 
                 for _ in range(self.__query_period):
                     if not self.__run:
@@ -285,7 +285,7 @@ class VitoReset():
         self.__mqttc.disconnect()
 
     def __set_gpio_output(self, output):
-        print("Setting GPIO " + str(self.__gpio_pin) + " output to " + str(output))
+        print("Setting GPIO " + str(self.__gpio_pin) + " output to " + str(output), flush=True)
         GPIO.output(self.__gpio_pin, output)
 
     def __setup_gpio(self):
@@ -300,7 +300,7 @@ class VitoReset():
         self.__mqttc.publish(self.__mqtt_topic_vito_reset_state, dumps({"Time" : datetime.datetime.now().isoformat(timespec="seconds"), "State" : state}), retain=True)
 
     def __reset_vito(self, vclient_result):
-        print("Resetting the heater")
+        print("Resetting the heater", flush=True)
         self.__publish_reset(vclient_result.errorcode)
         self.__set_gpio_output(True)
         sleep(self.__reset_wait_time)
@@ -332,9 +332,9 @@ class VitoReset():
                         reset_counter = 0
                         self.__publish_vito_reset_state(VitoReset.State.OK)
                 except ValueError as value_error:
-                    print(str(value_error))
+                    print(str(value_error), flush=True)
                 except subprocess.TimeoutExpired:
-                    print("vclient query took too long, will try again next period")
+                    print("vclient query took too long, will try again next period", flush=True)
 
                 for _ in range(self.__query_period):
                     if not self.__run:
