@@ -1,6 +1,7 @@
 [Unit]
 Description=vito-reset
-After=vcontrold.service
+Wants=network-online.target
+After=network-online.target vcontrold.service
 
 [Service]
 Type=simple

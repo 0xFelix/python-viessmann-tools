@@ -4,6 +4,8 @@ PKGBUILD and systemd unit files for Arch Linux are included, useful for ArchLinu
 
 viessmanntools module includes a Vclient wrapper, VclientToMqtt and VitoReset
 
+For successful system startup both service files need systemd-networkd-wait-online.service to be enabled
+
 ## vclient-to-mqtt
 Query vcontrold periodically with vclient and publish results over MQTT
 
