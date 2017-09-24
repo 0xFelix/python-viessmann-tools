@@ -200,7 +200,7 @@ class VitoReset():
     class State():
         OK = "OK"
         RESET_MAX_REACHED = "RESET_MAX_REACHED"
-        NOT_ALLOWED_ERRORCODE = "NOT_ALLOWED_ERRORCODE"
+        NOT_ALLOWED_ERRORCODE = "NOT_ALLOWED_ERRORCODE_"
 
     class VclientResult:
         """Parse the error string returned by the heater and make it an object"""
@@ -310,7 +310,8 @@ class VitoReset():
                                 self.__publish_vito_reset_state(VitoReset.State.RESET_MAX_REACHED)
                                 raise RuntimeError("reset_max reached, seems like your heater has more serious problems")
                         else:
-                            raise RuntimeError("Current errorcode not in allowed_errorcodes, seems like your heater has more serious problems")
+                            self.__publish_vito_reset_state(VitoReset.State.NOT_ALLOWED_ERRORCODE + vclient_result.errorcode)
+                            raise RuntimeError("Current errorcode " + vclient_result.errorcode + " not in allowed_errorcodes, seems like your heater has more serious problems")
                     else:
                         reset_counter = 0
                         self.__publish_vito_reset_state(VitoReset.State.OK)
