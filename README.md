@@ -6,6 +6,8 @@ viessmanntools module includes a Vclient wrapper, VclientToMqtt and VitoReset
 
 For successful system startup both service files need systemd-networkd-wait-online.service to be enabled
 
+paho-mqtt and RPi.GPIO need to be installed via pip.
+
 ## vclient-to-mqtt
 Query vcontrold periodically with vclient and publish results over MQTT
 
