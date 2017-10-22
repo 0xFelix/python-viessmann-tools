@@ -28,18 +28,18 @@ class ViessmannToolsConfig:
         config["VclientToMqtt"]["query_period"] = "60"
         config["VclientToMqtt"]["value_separator"] = ";"
         config["VclientToMqtt"]["unwanted_vclient_output"] = '" Grad Celsius", " l/h", " %", " Stunden", " h"'
-        config["VclientToMqtt"]["mqtt_broker"] = "192.168.222.36"
+        config["VclientToMqtt"]["mqtt_broker"] = "192.168.222.88"
         config["VclientToMqtt"]["mqtt_topic"] = "tele/heater/STATE"
 
         config["VitoReset"] = {}
-        config["VitoReset"]["gpio_pin"] = "8"
+        config["VitoReset"]["gpio_pin"] = "12"
         config["VitoReset"]["query_period"] = "300"
-        config["VitoReset"]["query_date_locale"] = "de_DE"
+        config["VitoReset"]["query_date_locale"] = "de_DE.UTF-8"
         config["VitoReset"]["query_date_format"] = "%a,%d.%m.%Y %H:%M:%S"
-        config["VitoReset"]["allowed_errorcodes"] = "00,F9"
+        config["VitoReset"]["allowed_errorcodes"] = "00,F9,FF"
         config["VitoReset"]["reset_wait_time"] = "1"
         config["VitoReset"]["reset_max"] = "3"
-        config["VitoReset"]["mqtt_broker"] = "192.168.222.36"
+        config["VitoReset"]["mqtt_broker"] = "192.168.222.88"
         config["VitoReset"]["mqtt_topic_reset"] = "tele/heater/RESET"
         config["VitoReset"]["mqtt_topic_vito_reset_state"] = "tele/heater/VITO-RESET-STATE"
 
