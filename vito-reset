@@ -1,15 +1,14 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import signal
+from viessmanntools.config import ViessmannToolsConfig
+from viessmanntools.vitoreset import VitoReset
 
-from viessmanntools import ViessmannToolsConfig, VitoReset
 
-def exit_handler(sig, frame):
-    vito_reset.stop()
+def main():
+    config = ViessmannToolsConfig.get_config("/etc/viessmanntools.conf")
+    vito_reset = VitoReset(config)
+    vito_reset.loop()
+
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGINT, exit_handler)
-    signal.signal(signal.SIGTERM, exit_handler)
-
-    with VitoReset(ViessmannToolsConfig.get_config("/etc/viessmanntools.conf")) as vito_reset:
-        vito_reset.run()
+    main()

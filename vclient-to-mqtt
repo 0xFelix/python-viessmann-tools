@@ -1,15 +1,14 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import signal
+from viessmanntools.config import ViessmannToolsConfig
+from viessmanntools.vclienttomqtt import VclientToMqtt
 
-from viessmanntools import ViessmannToolsConfig, VclientToMqtt
 
-def exit_handler(sig, frame):
-    vclient_to_mqtt.stop()
+def main():
+    config = ViessmannToolsConfig.get_config("/etc/viessmanntools.conf")
+    vclient_to_mqtt = VclientToMqtt(config)
+    vclient_to_mqtt.loop()
+
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGINT, exit_handler)
-    signal.signal(signal.SIGTERM, exit_handler)
-
-    with VclientToMqtt(ViessmannToolsConfig.get_config("/etc/viessmanntools.conf")) as vclient_to_mqtt:
-        vclient_to_mqtt.run()
+    main()
