@@ -1,7 +1,7 @@
 # Maintainer: 0xFelix
 
 pkgname=python-viessmann-tools
-pkgver=0.8.0
+pkgver=0.8.1
 pkgrel=1
 pkgdesc='Monitor and reset Viessmann heaters'
 arch=(armv6h armv7h aarch64)

@@ -3,6 +3,16 @@ from tempfile import NamedTemporaryFile
 from .config import ViessmannToolsConfig
 
 
+class CommunicationGarbledError(Exception):
+    def __init__(self):
+        super().__init__("Communication with heater was garbled, try again")
+
+
+class VclientError(Exception):
+    def __init__(self, output):
+        super().__init__(f"Vclient execution failed, output was:\n{output}")
+
+
 class Vclient:
     def __init__(self, commands, config=None):
         if config is None:
@@ -46,10 +56,8 @@ class Vclient:
 
         result_lower = result.stdout.lower()
         if "framer: error 15" in result_lower:
-            raise ValueError("Communication with heater was garbled, try again")
+            raise CommunicationGarbledError
         if "srv err" in result_lower or "error" in result_lower:
-            raise RuntimeError(
-                "vclient execution failed, output was:\n" + result.stdout
-            )
+            raise VclientError(result.stdout)
 
         return result.stdout

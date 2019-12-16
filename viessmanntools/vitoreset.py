@@ -10,7 +10,7 @@ from threading import Event
 import paho.mqtt.client as mqtt
 import RPi.GPIO as GPIO
 from .config import ViessmannToolsConfig
-from .vclient import Vclient
+from .vclient import CommunicationGarbledError, Vclient
 
 
 class VitoResetState(Enum):
@@ -41,10 +41,7 @@ class HeaterState:
 
     def _parse_datetime(self, date_str):
         with self._setlocale(self._query_date_locale):
-            try:
-                return datetime.strptime(date_str, self._query_date_format)
-            except ValueError:
-                raise RuntimeError("Could not parse date string")
+            return datetime.strptime(date_str, self._query_date_format)
 
     @staticmethod
     @contextmanager
@@ -64,7 +61,7 @@ class HeaterState:
             nth -= 1
 
         if idx == -1:
-            raise RuntimeError("Could not find nth occurence")
+            raise ValueError("Could not find nth occurence")
 
         return idx
 
@@ -196,7 +193,7 @@ class VitoReset:
                 else:
                     reset_count = 0
                     self._publish_state(VitoResetState.OK.value)
-            except ValueError as exc:
+            except CommunicationGarbledError as exc:
                 print(exc, flush=True)
             except TimeoutExpired:
                 print(
