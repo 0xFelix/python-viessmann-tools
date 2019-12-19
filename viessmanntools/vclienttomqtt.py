@@ -5,7 +5,7 @@ from signal import SIGINT, SIGTERM, signal
 from subprocess import TimeoutExpired
 import paho.mqtt.client as mqtt
 from .config import ViessmannToolsConfig
-from .vclient import Vclient
+from .vclient import CommunicationGarbledError, Vclient
 
 
 class VclientToMqtt:
@@ -75,7 +75,7 @@ class VclientToMqtt:
                     data[cmd] = results[i]
 
                 self._mqtt_client.publish(f"{self._topic}/SENSOR", dumps(data))
-            except ValueError as exc:
+            except CommunicationGarbledError as exc:
                 print(exc, flush=True)
             except TimeoutExpired:
                 print(
