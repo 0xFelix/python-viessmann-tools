@@ -6,7 +6,7 @@ setup(
     name="viessmanntools",
     description="Monitor and reset Viessmann heaters",
     url="https://github.com/0xFelix/python-viessmann-tools",
-    version="0.8.2",
+    version="0.8.3",
     author="0xFelix",
     license="GPLv3",
     packages=["viessmanntools"],

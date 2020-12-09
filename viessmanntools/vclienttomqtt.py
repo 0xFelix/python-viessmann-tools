@@ -36,6 +36,9 @@ class VclientToMqtt:
     def _signal_handler(self, *_):
         self._exit.set()
 
+    def _on_connect(self, client, userdata, flags, rc):
+        self._mqtt_client.publish(f"{self._topic}/LWT", "Online", retain=True)
+
     def _connect_mqtt_client(self):
         if self._username != "":
             if self._password != "":
@@ -47,9 +50,9 @@ class VclientToMqtt:
             self._mqtt_client.tls_set()
 
         self._mqtt_client.will_set(f"{self._topic}/LWT", "Offline", retain=True)
+        self._mqtt_client.on_connect = self._on_connect
         self._mqtt_client.connect(self._host, self._port)
         self._mqtt_client.loop_start()
-        self._mqtt_client.publish(f"{self._topic}/LWT", "Online", retain=True)
 
     def _disconnect_mqtt_client(self):
         self._mqtt_client.publish(f"{self._topic}/LWT", "Offline", retain=True)
